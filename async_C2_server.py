@@ -35,9 +35,16 @@ async def handler(reader,writer):
     sesje[addr] = writer
     try:    
         output = await run_cmd(reader,writer,"whoami")
-        print(f"komenda whoami dla {addr} wysłana")  
-        print(f"[I] kolega {addr} ma na imie {output.decode().strip()}")
-       
+       # print(f"[C] komenda whoami dla {addr} wysłana")
+        username = output.decode().strip()  
+        print(f"[I] kolega {addr} ma na imie {username}")
+        pwd = await run_cmd(reader, writer, "pwd")
+        pwd = pwd.decode().strip()
+        print(f"[I] kolega {username}@{addr} znajduje się w {pwd}")
+        ls = await run_cmd(reader,writer, "ls")
+        ls = ls.decode().strip()
+        print(f"[I] ls dla {username}:\n {ls}")
+
         while True:
             data = await reader.read(1024)
             if not data:
